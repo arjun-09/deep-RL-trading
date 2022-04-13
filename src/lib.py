@@ -1,4 +1,5 @@
-import random, os, datetime, pickle, json, keras, sys
+import random, os, datetime, pickle, json, sys
+from tensorflow import keras
 import pandas as pd
 #import matplotlib.pyplot as plt
 import numpy as np
