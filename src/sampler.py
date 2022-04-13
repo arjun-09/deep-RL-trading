@@ -1,4 +1,7 @@
 from lib import *
+from fetch_data import *
+
+import matplotlib.pyplot as plt
 
 def read_data(date, instrument, time_step):
 	path = os.path.join(PRICE_FLD, date, instrument+'.csv')
@@ -39,7 +42,6 @@ class Sampler:
 			param[k] = getattr(self, k)
 		json.dump(param, open(os.path.join(fld, 'param.json'),'w'))
 
-
 	def __sample_db(self):
 		prices, title = self.db[self.i_db]
 		self.i_db += 1
@@ -68,7 +70,7 @@ class PairSampler(Sampler):
 		param_str = str((self.noise_level, self.forecast_horizon_range, self.n_section, self.windows_transform))
 
 		if game == 'load':
-			self.load_db(fld)
+			self.load_db_crypto(fld)
 		elif game in ['randwalk','randjump']:
 			self.__rand = getattr(self, '_PairSampler__'+game)
 			self.sample = self.__sample
@@ -238,7 +240,82 @@ class SinSampler(Sampler):
 		return np.array(prices).T, str(funcs)
 
 
+class CryptoSampler(Sampler):
+        def __init__(self, game,
+                window_episode=None, interval=None, start_date=None, end_date=None, coin_name=None, fld=None):
 
+            self.n_var = 1  # price only
+                
+            self.window_episode = window_episode
+            self.interval = interval
+            self.start_date = start_date
+            self.end_date = end_date
+
+            self.attrs = ['title', 'window_episode', 'interval']
+            self.coin_name = coin_name
+            self.coin_data_files = None
+
+            self.ma = 9
+            self.multiplier = (2/(self.ma+1))
+            self.ema = lambda e, p : e * self.multiplier + p * (1 - self.multiplier)
+
+            if game == 'load':
+                self.load_db(fld)
+            elif game == 'single':
+                self.sample = self.__sample_crypto
+                self.title = coin_name
+            else:
+                raise ValueError
+        
+        def __read_coin_file(self, coin_file=None):
+            if coin_file is None:
+                return
+
+            close_prices = np.genfromtxt(coin_file, delimiter=',', usecols=[4])
+            previous_ema = close_prices[0]
+            current_ema = -1
+            demas = [previous_ema]
+
+            for i in range(1, len(close_prices)):
+                current_ema = self.ema(close_prices[i], previous_ema)
+                dema = 2 * current_ema - self.ema(current_ema, previous_ema)
+                demas.append(dema)
+                previous_ema = current_ema
+
+            return demas
+
+        def __sample_crypto_rand(self):
+            if self.coin_data_files is None:
+                coin_data_files = []
+                for file_name in os.listdir("."):
+                    if file_name.startswith(self.coin_name) and file_name.endswith("csv"):
+                        coin_data_files.append(file_name)
+                
+                if len(coin_data_files) > 0:
+                    self.coin_data_files = coin_data_files
+                else:
+                    self.coin_data_files = fetch_coin_data(self.coin_name, self.interval, self.start_date, self.end_date)
+                    for i, coin_file in enumerate(self.coin_data_files):
+                        self.coin_data_files[i] = "{}.csv".format(coin_file)
+
+            coin_file = self.coin_data_files[np.random.randint(len(self.coin_data_files), size=1)[0]]
+            
+            #print(coin_file, self.coin_data_files)
+            coin_data = self.__read_coin_file(coin_file)
+
+            start_index = np.random.randint(len(coin_data) - self.window_episode, size=1)[0]
+
+            return coin_data[start_index:start_index + self.window_episode], self.coin_name
+
+        def __sample_crypto(self):
+            prices = []
+            funcs = []
+            
+            p, title = self.__sample_crypto_rand()
+            prices.append(p)
+            funcs.append(title)
+
+            return np.array(prices).T, str(funcs)
 
 
 def test_SinSampler():
@@ -283,12 +360,29 @@ def test_PairSampler():
 	sampler.build_db(n_episodes, fld)
 	#"""
 
+def test_CryptoSampler():
+        window_episode = 270
+        interval = "1m"
+        start_date = "2020-11"
+        end_date = "2022-01"
+        game = "single"
+        coin_name = "CTKUSDT"
 
+        sampler = CryptoSampler(game, window_episode, interval, start_date, end_date, coin_name)
+#        plt.plot(sampler.sample()[0])
+#        plt.show()
+        
+        
+        n_episodes = 10
 
+        fld = os.path.join('data', 'CryptoSamplerDB', game+'_A')
+        sampler.build_db(n_episodes, fld)
+        
 
 if __name__ == '__main__':
 	#scan_match()
-	test_SinSampler()
+	#test_SinSampler()
 	#p = [1,2,3,2,1,2,3]
 	#print find_ideal(p)
-	test_PairSampler()
+	#test_PairSampler()
+        test_CryptoSampler()

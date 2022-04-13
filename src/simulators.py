@@ -133,8 +133,8 @@ class Simulator:
 				print('\t'.join(ss))
 
 			
-			if n%save_per_episode == 0:
-				print('saving results...')
+#			if n%save_per_episode == 0:
+#				print('saving results...')
 
 				"""
 				self.visualizer.plot_a_episode(

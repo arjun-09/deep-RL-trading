@@ -74,9 +74,13 @@ def main():
 	model_type = 'conv'; exploration_init = 1.; fld_load = None
 	n_episode_training = 1000
 	n_episode_testing = 100
-	open_cost = 3.3
+	open_cost = 1.75
 	#db_type = 'SinSamplerDB'; db = 'concat_half_base_'; Sampler = SinSampler
-	db_type = 'PairSamplerDB'; db = 'randjump_100,1(10, 30)[]_'; Sampler = PairSampler
+	#db_type = 'PairSamplerDB'; db = 'randjump_100,1(10, 30)[]_'; Sampler = PairSampler
+        db_type = 'CryptoSamplerDB'
+        db = 'single_'
+        Sampler = CryptoSampler
+
 	batch_size = 8
 	learning_rate = 1e-4
 	discount_factor = 0.8
