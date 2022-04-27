@@ -74,7 +74,7 @@ def main():
     model_type = 'conv'; exploration_init = 1.; fld_load = None
     n_episode_training = 1000
     n_episode_testing = 100
-    open_cost = 1.75
+    open_price = 0.75
     #db_type = 'SinSamplerDB'; db = 'concat_half_base_'; Sampler = SinSampler
     #db_type = 'PairSamplerDB'; db = 'randjump_100,1(10, 30)[]_'; Sampler = PairSampler
     db_type = 'CryptoSamplerDB'
@@ -90,7 +90,7 @@ def main():
 
     fld = os.path.join('..','data',db_type,db+'A')
     sampler = Sampler('load', fld=fld)
-    env = Market(sampler, window_state, open_cost)
+    env = Market(sampler, window_state, open_price)
     model, print_t = get_model(model_type, env, learning_rate, fld_load)
     model.model.summary()
     #return
@@ -100,7 +100,7 @@ def main():
 
     fld_save = os.path.join(OUTPUT_FLD, sampler.title, model.model_name, 
         str((env.window_state, sampler.window_episode, agent.batch_size, learning_rate,
-            agent.discount_factor, exploration_decay, env.open_cost)))
+            agent.discount_factor, exploration_decay, env.open_price)))
     
     print('='*20)
     print(fld_save)

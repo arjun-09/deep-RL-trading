@@ -361,7 +361,7 @@ def test_PairSampler():
 	#"""
 
 def test_CryptoSampler():
-        window_episode = 270
+        window_episode = 180
         interval = "1m"
         start_date = "2020-11"
         end_date = "2022-01"
@@ -373,7 +373,7 @@ def test_CryptoSampler():
 #        plt.show()
         
         
-        n_episodes = 10
+        n_episodes = 1200
 
         fld = os.path.join('data', 'CryptoSamplerDB', game+'_A')
         sampler.build_db(n_episodes, fld)

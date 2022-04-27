@@ -1,4 +1,5 @@
 from lib import *
+from scipy.signal import argrelextrema
 
 # by Xiang Gao, 2018
 # modified by Arjun Chouhan, 2022
@@ -6,12 +7,58 @@ from lib import *
 
 def find_ideal(p, just_once, direction=1.):
     if not just_once:
-        if direction > 0:
-            diff = np.array(p[1:]) - np.array(p[:-1])
-        else:
-            diff = -1. * (np.array(p[1:]) - np.array(p[:-1]))
+        maximas = argrelextrema(p, np.greater)[0]
+        minimas = argrelextrema(p, np.less)[0]
+        reward = 0
 
-        return sum(np.maximum(np.zeros(diff.shape), diff))
+        if len(minimas) > 0 and len(maximas) > 0:
+            if maximas[0] < minimas[0] and p[0] < p[maximas[0]]:
+                minimas = np.insert(minimas, 0, 0)
+            elif maximas[0] > minimas[0] and p[0] > p[minimas[0]]:
+                maximas = np.insert(maximas, 0, 0)
+        elif len(minimas) > 0:
+            maximas = np.insert(maximas, 0, 0)
+            maximas = np.append(maximas, len(p) - 1)
+        elif len(maximas) > 0:
+            minimas = np.insert(minimas, 0, 0)
+            maximas = np.append(minimas, len(p) - 1)
+        else:
+            a = p[0]
+            b = p[len(p) - 1]
+
+            if a < b:
+                maximas = np.append(maximas, len(p) - 1)
+                minimas = np.append(minimas, 0)
+            elif a > b:
+                minimas = np.append(minimas, len(p) - 1)
+                maximas = np.append(maximas, 0)
+            else:
+                return 0
+            
+
+        print(maximas, minimas)
+
+        for i in range(0, min(len(maximas), len(minimas))):
+            
+            if i >= len(maximas) and i < len(minimas):
+                reward += abs(p[minimas[i]] - p[maximas[i - 1]])
+            elif i < len(maximas) and i >= len(minimas):
+                reward += p[maximas[i]] - p[minimas[i - 1]]
+            else:
+                reward += p[maximas[i]] - p[minimas[i]]
+                if i + 1 < len(minimas):
+                    reward += p[maximas[i]] - p[minimas[i + 1]]
+                elif i + 1 < len(maximas):
+                    reward += p[maximas[i + 1]] - p[minimas[i]]
+
+        return reward
+
+#        if direction > 0:
+#            diff = np.array(p[1:]) - np.array(p[:-1])
+#        else:
+#            diff = -1. * (np.array(p[1:]) - np.array(p[:-1]))
+
+#        return sum(np.maximum(np.zeros(diff.shape), diff))
     else:
         best = 0.
         i0_best = None
@@ -33,9 +80,9 @@ class Market:
     action          five actions
                     0:    empty, don't open/close. 
                     1:    open a Long position
-                                        2:      open a Short position
+                    2:      open a Short position
                     3:     keep a Long/Short position
-                                        4:      close a Long/Short position     
+                    4:      close a Long/Short position     
     """
     
     def reset(self, rand_price=True):
@@ -49,15 +96,16 @@ class Market:
             self.price = price/price[0]*100
             self.t_max = len(self.price) - 1
 
-            upwards_profit = find_ideal(self.price[self.t0:], False, 1.0)
-            downwards_profit = find_ideal(self.price[self.t0:], False, -1.0)
+            profit = find_ideal(self.price[self.t0:], False)
+#            downwards_profit = find_ideal(self.price[self.t0:], False, -1.0)
 
-            if downwards_profit > upwards_profit:
-                self.direction = -1.
-                self.max_profit = downwards_profit
-            else:
-                self.direction = 1.
-                self.max_profit = upwards_profit
+#            if downwards_profit > upwards_profit:
+#                self.direction = -1.
+#                self.max_profit = downwards_profit
+#            else:
+#                self.direction = 1.
+#                self.max_profit = upwards_profit
+            self.max_profit = profit
 
         self.t = self.t0
         return self.get_state(), self.get_valid_actions()
@@ -89,7 +137,7 @@ class Market:
             else:
                 reward = self.direction * (self.price[t] - self.open_price)
         if empty:
-            reward -= self.open_cost
+            reward -= self.open_price
         if reward < 0:
             reward *= (1. + self.risk_averse)
 
@@ -103,14 +151,14 @@ class Market:
             reward = 0.
             #self.empty = True
         elif action == 1:    # Long
+            self.direction = 1.
             reward = self.get_noncash_reward()
             self.empty = False
-            self.direction = 1.
             self.open_price = self.price[self.t]
         elif action == 2:    # Short
+            self.direction = -1.
             reward = self.get_noncash_reward()
             self.empty = False
-            self.direction = -1.
             self.open_price = self.price[self.t]
         elif action == 3:       # Keep
             reward = self.get_noncash_reward()
@@ -130,7 +178,7 @@ class Market:
 
         self.sampler = sampler
         self.window_state = window_state
-        self.open_cost = open_cost
+        self.open_price = open_cost
         self.direction = direction
         self.risk_averse = risk_averse
 
